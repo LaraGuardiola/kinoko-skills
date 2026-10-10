@@ -1,0 +1,8 @@
+{
+  "name": "kinoko-skills",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "bun test"
+  }
+}
