@@ -27,8 +27,10 @@ case $1 in
         echo "Device $2"; echo "	Name: $(field "$2" 1)"; echo "	Icon: $(field "$2" 4)"
         echo "	Paired: $(field "$2" 2)"; echo "	Connected: $(field "$2" 3)" ;;
   pair) [[ -e $S/pairable/$2 ]] && set_field "$2" 2 yes ;;
-  connect) [[ $(field "$2" 2) == yes ]] && set_field "$2" 3 yes ;;
-  disconnect) set_field "$2" 3 no ;;
+  connect) [[ $(field "$2" 2) == yes ]] && set_field "$2" 3 yes
+           # A flaky speaker: its first connection opens no audio.
+           [[ -e $S/flaky/$2 ]] && { rm "$S/flaky/$2"; touch "$S/nosink/$2"; } ;;
+  disconnect) set_field "$2" 3 no; rm -f "$S/nosink/$2" ;;
   remove) rm -f "$S/known/$2" ;;
 esac
 `;
@@ -37,7 +39,7 @@ S=${state}
 case "$1 $2" in
   "list short") if [[ $3 == sinks ]]; then for f in "$S"/known/*; do
       IFS='|' read -r n p c i < "$f"; a=$(basename "$f")
-      [[ $c == yes && $i == audio-* ]] && printf '7\\tbluez_output.%s.1\\tPipeWire\\n' "\${a//:/_}"
+      [[ $c == yes && $i == audio-* && ! -e $S/nosink/$(basename "$f") ]] && printf '7\\tbluez_output.%s.1\\tPipeWire\\n' "\${a//:/_}"
     done; fi ;;
   "set-default-sink "*) echo "$2" > "$S/default-sink" ;;
 esac
@@ -48,14 +50,14 @@ function device(where: "known" | "nearby", addr: string, name: string, paired = 
 }
 
 async function bt(...args: string[]): Promise<{ out: string; err: string; code: number }> {
-  const proc = Bun.spawn(["bash", join(import.meta.dir, "bt.sh"), ...args], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}` }, stdout: "pipe", stderr: "pipe" });
+  const proc = Bun.spawn(["bash", join(import.meta.dir, "bt.sh"), ...args], { env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BT_SINK_WAIT: "1" }, stdout: "pipe", stderr: "pipe" });
   const [out, err, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
   return { out: out.trim(), err: err.trim(), code };
 }
 
 beforeEach(() => {
   rmSync(state, { recursive: true, force: true });
-  for (const d of ["known", "nearby", "pairable"]) mkdirSync(join(state, d), { recursive: true });
+  for (const d of ["known", "nearby", "pairable", "flaky", "nosink"]) mkdirSync(join(state, d), { recursive: true });
   mkdirSync(bin, { recursive: true });
   for (const [name, body] of [["bluetoothctl", fakeBluetoothctl], ["pactl", fakePactl], ["rfkill", "#!/bin/sh\n"]] as const) {
     writeFileSync(join(bin, name), body);
@@ -88,6 +90,16 @@ describe("bluetooth skill: bt.sh", () => {
     expect(readFileSync(join(state, "default-sink"), "utf8").trim()).toBe("bluez_output.BB_00_00_00_00_01.1");
   });
 
+  test("a speaker whose audio does not open on the first connection: connected again, then it plays", async () => {
+    device("nearby", "BB:00:00:00:00:02", "LG CM2460(04)", "no", "no", "audio-card");
+    writeFileSync(join(state, "pairable", "BB:00:00:00:00:02"), "");
+    writeFileSync(join(state, "flaky", "BB:00:00:00:00:02"), "");
+    const { out, code } = await bt("connect", "lg cm");
+    expect(code).toBe(0);
+    expect(out).toContain("audio now plays on LG CM2460(04)");
+    expect(readFileSync(join(state, "default-sink"), "utf8").trim()).toBe("bluez_output.BB_00_00_00_00_02.1");
+  });
+
   test("a controller paired before connects without a scan, and the sound stays where it was", async () => {
     device("known", "CC:00:00:00:00:01", "DualSense Wireless Controller", "yes", "no", "input-gaming");
     const { out } = await bt("connect", "dualsense");
@@ -107,6 +119,14 @@ describe("bluetooth skill: bt.sh", () => {
     const none = await bt("connect", "toaster");
     expect(none.err).toContain("no device \"toaster\" found nearby. Put it in pairing mode");
   });
+
+  test("a paired controller that is off: says to press its PS button, not to wait", async () => {
+    device("known", "CC:00:00:00:00:02", "DualSense Wireless Controller", "yes", "no", "input-gaming");
+    writeFileSync(join(bin, "bluetoothctl"), fakeBluetoothctl.replace("connect) [[", "connect) false && [["));
+    const { err, code } = await bt("connect", "dualsense");
+    expect(code).toBe(1);
+    expect(err).toContain("cannot switch a controller on. Press its PS button");
+  }, 15_000); // connect waits 5 s for the link before giving up
 
   test("forget unpairs; audio on a controller says it has none", async () => {
     device("known", "EE:00:00:00:00:01", "DualSense Wireless Controller", "yes", "yes", "input-gaming");

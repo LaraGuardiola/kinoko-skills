@@ -91,6 +91,16 @@ cmd_scan() {
 # The audio output (PipeWire/PulseAudio sink) of a connected device, by its address.
 sink_of() { pactl list short sinks 2>/dev/null | awk -v a="${1//:/_}" 'index($2, a) { print $2; exit }'; }
 
+# The sink appears a moment after the connection: its name, or nothing after BT_SINK_WAIT seconds.
+wait_sink() {
+  local sink
+  for _ in $(seq "${BT_SINK_WAIT:-8}"); do
+    sink=$(sink_of "$1")
+    [[ -n $sink ]] && { echo "$sink"; return; }
+    sleep 1
+  done
+}
+
 cmd_audio() {
   local addr sink
   addr=$(need "$1") || exit 1
@@ -99,13 +109,15 @@ cmd_audio() {
     audio-* | "") ;;
     *) die "$(prop "$addr" Name) has no audio output (it is a $(prop "$addr" Icon), not a speaker or headset)" ;;
   esac
-  # The sink appears a moment after the connection.
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    sink=$(sink_of "$addr")
-    [[ -n $sink ]] && break
-    sleep 1
-  done
-  [[ -n $sink ]] || die "$(prop "$addr" Name) has no audio output (not connected, or not a speaker/headset)"
+  sink=$(wait_sink "$addr")
+  # Right after pairing, a speaker may connect without opening its audio: once more, it does.
+  if [[ -z $sink ]]; then
+    bt disconnect "$addr" >/dev/null
+    sleep 2
+    bt connect "$addr" >/dev/null
+    sink=$(wait_sink "$addr")
+  fi
+  [[ -n $sink ]] || die "$(prop "$addr" Name) is connected but its audio did not start, even after connecting again: switch the speaker off and on, then bt.sh connect again"
   pactl set-default-sink "$sink" || die "could not make it the audio output"
   # What is already playing moves there too.
   pactl list short sink-inputs 2>/dev/null | awk '{print $1}' | while read -r input; do pactl move-sink-input "$input" "$sink" 2>/dev/null; done
@@ -132,7 +144,11 @@ cmd_connect() {
     bt connect "$addr" >/dev/null
     for _ in 1 2 3 4 5; do [[ $(prop "$addr" Connected) == yes ]] && break; sleep 1; done
   fi
-  [[ $(prop "$addr" Connected) == yes ]] || die "$name is paired but did not connect: is it on and in range?"
+  if [[ $(prop "$addr" Connected) != yes ]]; then
+    # A controller is never woken from here: switched on, it connects by itself.
+    [[ $(prop "$addr" Icon) == input-gaming ]] && die "$name is paired but did not connect: the computer cannot switch a controller on. Press its PS button: it connects by itself in a few seconds (check with bt.sh list). Still nothing: it was paired with a console since, so hold Create + PS until the light flashes and connect again."
+    die "$name is paired but did not connect: is it on and in range?"
+  fi
   echo "connected to $name ($addr)"
   case $(prop "$addr" Icon) in
     audio-*) cmd_audio "$addr" ;;
