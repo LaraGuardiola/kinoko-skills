@@ -132,7 +132,11 @@ cmd_connect() {
     bt connect "$addr" >/dev/null
     for _ in 1 2 3 4 5; do [[ $(prop "$addr" Connected) == yes ]] && break; sleep 1; done
   fi
-  [[ $(prop "$addr" Connected) == yes ]] || die "$name is paired but did not connect: is it on and in range?"
+  if [[ $(prop "$addr" Connected) != yes ]]; then
+    # A controller is never woken from here: switched on, it connects by itself.
+    [[ $(prop "$addr" Icon) == input-gaming ]] && die "$name is paired but did not connect: the computer cannot switch a controller on. Press its PS button: it connects by itself in a few seconds (check with bt.sh list). Still nothing: it was paired with a console since, so hold Create + PS until the light flashes and connect again."
+    die "$name is paired but did not connect: is it on and in range?"
+  fi
   echo "connected to $name ($addr)"
   case $(prop "$addr" Icon) in
     audio-*) cmd_audio "$addr" ;;

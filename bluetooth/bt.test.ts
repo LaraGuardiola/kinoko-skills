@@ -108,6 +108,14 @@ describe("bluetooth skill: bt.sh", () => {
     expect(none.err).toContain("no device \"toaster\" found nearby. Put it in pairing mode");
   });
 
+  test("a paired controller that is off: says to press its PS button, not to wait", async () => {
+    device("known", "CC:00:00:00:00:02", "DualSense Wireless Controller", "yes", "no", "input-gaming");
+    writeFileSync(join(bin, "bluetoothctl"), fakeBluetoothctl.replace("connect) [[", "connect) false && [["));
+    const { err, code } = await bt("connect", "dualsense");
+    expect(code).toBe(1);
+    expect(err).toContain("cannot switch a controller on. Press its PS button");
+  }, 15_000); // connect waits 5 s for the link before giving up
+
   test("forget unpairs; audio on a controller says it has none", async () => {
     device("known", "EE:00:00:00:00:01", "DualSense Wireless Controller", "yes", "yes", "input-gaming");
     expect((await bt("audio", "dualsense")).err).toContain("has no audio output");
