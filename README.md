@@ -4,6 +4,7 @@ Skills for [kinoko](https://github.com/LaraGuardiola/kinoko), one folder each, i
 
 | Skill | When kinoko uses it |
 |---|---|
+| `bluetooth` | Finding, pairing and connecting Bluetooth devices (speakers, headphones, a PS5 controller), and sending the sound to a speaker. |
 | `write-kinoko-extension` | Writing, testing or fixing an extension for kinoko-extensions. |
 
 ## Install
