@@ -48,6 +48,8 @@ usual way (the music tool when there is one). What is already playing moves to i
 - A controller cannot be woken from the computer: the user switches it on (PS button) and a
   DualSense paired here connects by itself in a few seconds; check with `list`. If it was paired
   with a PS5 since, it forgot this computer: pairing mode (Create + PS), then `connect`.
+- "connected but its audio did not start": bt.sh already connected it a second time; ask the user to
+  switch the speaker off and on, then `connect` again.
 - Pairing a device that was paired before and misbehaves: `forget` it, pairing mode, `connect`.
 - No Bluetooth at all: `bluetoothctl show` says whether the adapter is there and powered;
   `rfkill list bluetooth` whether it is blocked.
