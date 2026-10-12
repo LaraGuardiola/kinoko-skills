@@ -23,6 +23,9 @@ my-ext/
 - Runtime libraries go in its own `package.json` `dependencies`; kinoko runs `bun install` in the
   installed folder. Keep them few: no dependency is the default.
 - `description` is what kinoko's list shows: one line, what it does, not how.
+- kinoko runs on Linux, macOS and Windows. An extension that cannot (it needs bluez, grim...) says
+  where it works in package.json, `"os": ["linux"]` (`darwin` is macOS, `win32` Windows): elsewhere
+  it is never installed or loaded. Better still, register only the tools that work here.
 
 ## The handle
 

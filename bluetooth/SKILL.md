@@ -1,5 +1,6 @@
 ---
 name: bluetooth
+platforms: linux
 description: Find, pair, connect and disconnect Bluetooth devices on Linux (speakers, headphones, earbuds, game controllers like a PS5 DualSense, keyboards), and send the computer's sound to a Bluetooth speaker. Use it whenever the user asks which devices are nearby or detected (even without saying "Bluetooth"), to connect or disconnect a speaker or controller, or to "play music on the speaker". Always through its bt.sh: a plain `bluetoothctl scan on` stops scanning the moment it returns and finds nothing new.
 ---
 
