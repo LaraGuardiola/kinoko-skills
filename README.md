@@ -4,7 +4,7 @@ Skills for [kinoko](https://github.com/LaraGuardiola/kinoko), one folder each, i
 
 | Skill | When kinoko uses it |
 |---|---|
-| `bluetooth` | Finding, pairing and connecting Bluetooth devices (speakers, headphones, a PS5 controller), and sending the sound to a speaker. |
+| `bluetooth` | (Linux) Finding, pairing and connecting Bluetooth devices (speakers, headphones, a PS5 controller), and sending the sound to a speaker. |
 | `write-kinoko-extension` | Writing, testing or fixing an extension for kinoko-extensions. |
 
 ## Install
@@ -29,6 +29,10 @@ description: What it does and when to use it, with the words a user would say. O
 
 # The body: steps, commands, pitfalls. Read only when the task matches.
 ```
+
+Only for some systems? Add `platforms: linux` (or `linux, macos`; `windows` too) to the frontmatter:
+elsewhere kinoko marks it in the list, does not install it, and leaves it out of the model's index.
+Nothing said: every system.
 
 Other files (scripts, templates) may sit beside it; the body refers to them by relative path.
 `bun run check` validates every folder.
