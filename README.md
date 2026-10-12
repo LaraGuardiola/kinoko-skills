@@ -11,8 +11,9 @@ Skills for [kinoko](https://github.com/LaraGuardiola/kinoko), one folder each, i
 
 In kinoko, open the menu with `/` and pick **skills**: it lists this repo's skills (fetched with git
 into `~/.kinoko/registry/skills/`). Enter installs or updates one into `~/.kinoko/skills/<name>/`;
-Del twice removes it. kinoko lists skills to the model when it starts (name and description only;
-the body is read when the task matches), so restart it after a change.
+Del twice removes it. kinoko lists skills to the model (name and description only; the body is
+read when the task matches); one installed or removed while it runs is told to the model with your
+next message.
 
 By hand: copy a folder to `~/.kinoko/skills/<name>/`.
 
